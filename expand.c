@@ -44,7 +44,7 @@ struct ExpandData {
 };
 
 static void     expand_fetch_cb(PurpleUtilFetchUrlData * url_data, gpointer user_data, const gchar * url_text, gsize len, const gchar * error_message);
-static void     replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new);
+static void     replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new, gboolean link);
 static void     expand(const char *url, ExpandCallback callback, gpointer userdata);
 static GList   *get_links(const char *text);
 static void     expand_cb(const gchar * original_url, const gchar * expanded_url, gpointer userdata);
@@ -133,7 +133,7 @@ static GList   *get_links(const char *text)
     return urls;
 }
 
-static void replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new)
+static void replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new, gboolean link)
 {
     GtkIMHtml      *imhtml = NULL;
     GtkTextBuffer  *text_buffer = NULL;
@@ -153,7 +153,14 @@ static void replace(PurpleAccount * account, PurpleConversation * conv, const gc
         return;
     }
     gtk_text_buffer_delete(text_buffer, &text_start, &text_end);
-    gtk_text_buffer_insert(text_buffer, &text_start, new, -1);
+	if (link) {
+		GtkTextMark *mark;
+		mark = gtk_text_buffer_create_mark( text_buffer, "new_url", &text_start, TRUE);
+		gtk_imhtml_insert_link(imhtml, mark, new, new);
+		gtk_text_buffer_delete_mark(text_buffer, mark);
+	} else {
+		gtk_text_buffer_insert(text_buffer, &text_start, new, -1);
+	}
 
     return;
 }
@@ -172,7 +179,7 @@ static void expand_cb(const gchar * original_url, const gchar * expanded_url, gp
 
     purple_debug_info(PLUGIN_ID, "Expanded |%s| into |%s|\n", original_url, expanded_url);
 
-    replace(convmsg->account, convmsg->conv, original_url, expanded_url);
+    replace(convmsg->account, convmsg->conv, original_url, expanded_url, TRUE);
 
     g_free(convmsg);
 }
