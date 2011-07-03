@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([expand], [0.1.0], [https://code.google.com/p/expand/])
+AC_INIT([expand], [0.2.0], [https://code.google.com/p/expand/])
 AC_CANONICAL_TARGET([])
 AM_INIT_AUTOMAKE([1.9.5])
 
