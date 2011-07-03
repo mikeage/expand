@@ -6,8 +6,8 @@ SetCompress auto
 ; todo: SetBrandingImage
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "expand"
-!define PRODUCT_PUBLISHER "Mikeage"
-!define PRODUCT_WEB_SITE "http://mikeage.net"
+!define PRODUCT_PUBLISHER "Mike Miller <mikeage@gmail.com>"
+!define PRODUCT_WEB_SITE "https://code.google.com/p/expand/"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 

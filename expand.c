@@ -312,7 +312,7 @@ static PurplePluginInfo info = {
     "Expand inline short URLs",                        /**< summary */
     "Expand inline short URLs",               /**< description */
     "Mike Miller <mikeage@gmail.com>",           /* author */
-    "http://mikeage.net/coming-soon",            /* homepage */
+    "https://code.google.com/p/expand/",            /* homepage */
     plugin_load,                                    /**< load */
     plugin_unload,                                  /**< unload */
     plugin_destroy,                                 /**< destroy */
