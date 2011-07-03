@@ -6,7 +6,6 @@
 #include "core.h"
 #include "debug.h"
 #include "util.h"
-#include "local_util.h"
 #include "version.h"
 
 #include "gtkplugin.h"
@@ -26,6 +25,8 @@
 #define _(String) ((/* const */ char *) (String))
 #define N_(String) ((/* const */ char *) (String))
 #endif                       // ENABLE NLS
+
+#include "local_util.h"
 
 struct AccountConv {
     PurpleAccount  *account;

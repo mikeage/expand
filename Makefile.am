@@ -7,8 +7,7 @@ EXPAND_SOURCES = \
 				   expand.c \
 				   expand.h \
 				   local_util.c \
-				   local_util.h \
-				   internal.h
+				   local_util.h 
 
 AM_CFLAGS = \
 	$(st)
