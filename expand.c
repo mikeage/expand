@@ -34,7 +34,7 @@ struct AccountConv {
 };
 
 static PurplePlugin *expand_plugin = NULL;
-char           *shorteners[] = { "tinyurl.com", "bit.ly", "t.co", "is.gd" };
+char           *shorteners[] = { "tinyurl.com", "bit.ly", "t.co", "is.gd", "j.mp", "goo.gl" };
 
 typedef void    (*ExpandCallback) (const gchar * original_url, const gchar * expanded_url, gpointer userdata);
 struct ExpandData {
