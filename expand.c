@@ -96,8 +96,6 @@ static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer use
         convmsg = store->userdata;
     }
 
-    purple_debug_info(PLUGIN_ID, "MHM: Got |%s|\n", url_text);
-
     if (url_text && len) {
         response_node = xmlnode_from_str(url_text, strlen(url_text));
     } else {
