@@ -147,7 +147,7 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
     }
 
     if (location) {
-        location += 11;
+		location += 11;
         new_location = g_strndup(location, strchr(location, '\r') - location);
     }
 
@@ -165,7 +165,6 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
 
     g_free(convmsg);
     g_free(new_location);
-    g_free(location);
     g_free(store->original_url);
     g_free(store);
 }
