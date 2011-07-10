@@ -33,21 +33,26 @@ struct AccountConv {
     PurpleConversation *conv;
 };
 
-static PurplePlugin *expand_plugin = NULL;
-char           *shorteners[] = { "tinyurl.com", "bit.ly", "t.co", "is.gd", "j.mp", "goo.gl", "ow.ly" };
+typedef void    (*SHORTENER_CB) (const char *, gpointer);
+struct Shortener {
+    char            name[100];
+    SHORTENER_CB    cb;
+};
 
-typedef void    (*ExpandCallback) (const gchar * original_url, const gchar * expanded_url, gpointer userdata);
+static PurplePlugin *expand_plugin = NULL;
+// char           *shorteners[] = { "tinyurl.com", "bit.ly", "t.co", "is.gd", "j.mp", "goo.gl", "ow.ly" };
+
 struct ExpandData {
     gchar          *original_url;
-    ExpandCallback  callback;
     gpointer        userdata;
 };
 
-static void     expand_fetch_cb(PurpleUtilFetchUrlData * url_data, gpointer user_data, const gchar * url_text, gsize len, const gchar * error_message);
+static void     expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
+static void     expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new, gboolean link);
-static void     expand(const char *url, ExpandCallback callback, gpointer userdata);
+static void     expand_twitlonger(const char *url, gpointer userdata);
+static void     expand_shortlink(const char *url, gpointer userdata);
 static GList   *get_links(const char *text);
-static void     expand_cb(const gchar * original_url, const gchar * expanded_url, gpointer userdata);
 static gboolean displaying_msg(PurpleAccount * account, const char *message, PurpleConversation * conv);
 static gboolean displaying_im_msg_cb(PurpleAccount * account, const char *who, char **message, PurpleConversation * conv, PurpleMessageFlags flags);
 static gboolean displaying_chat_msg_cb(PurpleAccount * account, const char *who, char **message, PurpleConversation * conv, PurpleMessageFlags flags);
@@ -56,12 +61,86 @@ static gboolean plugin_unload(PurplePlugin * plugin);
 static PurplePluginPrefFrame *get_plugin_pref_frame(PurplePlugin * plugin);
 static void     plugin_destroy(PurplePlugin * plugin);
 static void     plugin_init(PurplePlugin * plugin);
+static gchar   *xmlnode_get_child_data(const xmlnode * node, const char *name);
 
-static void expand_fetch_cb(PurpleUtilFetchUrlData * url_data, gpointer user_data, const gchar * url_text, gsize len, const gchar * error_message)
+struct Shortener shorteners[] = {
+    {"tinyurl.com", expand_shortlink},
+    {"bit.ly", expand_shortlink},
+    {"t.co", expand_shortlink},
+    {"is.gd", expand_shortlink},
+    {"j.mp", expand_shortlink},
+    {"goo.gl", expand_shortlink},
+    {"ow.ly", expand_shortlink},
+    {"tl.gd", expand_shortlink},
+    {"twitlonger.com", expand_twitlonger},
+    {"www.twitlonger.com", expand_twitlonger}
+};
+
+static gchar   *xmlnode_get_child_data(const xmlnode * node, const char *name)
 {
-    struct ExpandData *store = user_data;
+    xmlnode        *child = xmlnode_get_child(node, name);
+    if (!child)
+        return NULL;
+    return xmlnode_get_data_unescaped(child);
+}
+
+static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message)
+{
+    struct ExpandData *store = userdata;
+    struct AccountConv *convmsg = NULL;
+    xmlnode        *response_node = NULL;
+    xmlnode        *post = NULL;
+    gchar          *fulltext;
+
+    if (store) {
+        convmsg = store->userdata;
+    }
+
+    purple_debug_info(PLUGIN_ID, "MHM: Got |%s|\n", url_text);
+
+    if (url_text && len) {
+        response_node = xmlnode_from_str(url_text, strlen(url_text));
+    } else {
+        purple_debug_error(PLUGIN_ID, "Couldn't retreive! Error: %s\n", error_message);
+    }
+
+    if (response_node) {
+        post = xmlnode_get_child(response_node, "post");
+    }
+
+    if (post) {
+        gchar          *content = xmlnode_get_child_data(post, "content");
+
+        fulltext = g_strdup_printf("... (%s)", content);
+
+        g_free(content);
+
+        replace(convmsg->account, convmsg->conv, store->original_url, fulltext, FALSE);
+    } else {
+        purple_debug_error(PLUGIN_ID, "Couldn't expand %s\n", store->original_url);
+        return;
+    }
+
+    if (response_node)
+        xmlnode_free(response_node);
+    if (post)
+        xmlnode_free(post);
+    g_free(convmsg);
+    g_free(fulltext);
+    g_free(store->original_url);
+    g_free(store);
+}
+
+static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message)
+{
+    struct ExpandData *store = userdata;
     gchar          *location = NULL;
     gchar          *new_location = NULL;
+    struct AccountConv *convmsg = NULL;
+
+    if (store) {
+        convmsg = store->userdata;
+    }
 
     if (url_text && len) {
         location = g_strstr_len(url_text, len, "\nLocation: ");
@@ -74,21 +153,49 @@ static void expand_fetch_cb(PurpleUtilFetchUrlData * url_data, gpointer user_dat
         new_location = g_strndup(location, strchr(location, '\r') - location);
     }
 
-    store->callback(store->original_url, new_location, store->userdata);
+    if (new_location) {
+        /* Check for nesting */
+        displaying_msg(convmsg->account, new_location, convmsg->conv);
 
+        purple_debug_info(PLUGIN_ID, "Expanded |%s| into |%s|\n", store->original_url, new_location);
+
+        replace(convmsg->account, convmsg->conv, store->original_url, new_location, TRUE);
+    } else {
+        purple_debug_error(PLUGIN_ID, "Couldn't expand %s\n", store->original_url);
+        return;
+    }
+
+    g_free(convmsg);
     g_free(new_location);
+    g_free(location);
     g_free(store->original_url);
     g_free(store);
 }
 
-static void expand(const char *url, ExpandCallback callback, gpointer userdata)
+static void expand_twitlonger(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request_url;
+
+    store = g_new0(struct ExpandData, 1);
+    request_url = g_strdup_printf("%s/fulltext", url);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL, FALSE, expand_twitlonger_cb, store);
+
+    g_free(request_url);
+}
+
+static void expand_shortlink(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
     gchar          *request;
 
     store = g_new0(struct ExpandData, 1);
     store->original_url = g_strdup(url);
-    store->callback = callback;
     store->userdata = userdata;
 
     /* Host? */
@@ -97,7 +204,7 @@ static void expand(const char *url, ExpandCallback callback, gpointer userdata)
     purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request);
 
     /* Custom version that doesn't follow redirects */
-    local_purple_util_fetch_url_request(url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, request, TRUE, expand_fetch_cb, store);
+    local_purple_util_fetch_url_request(url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, request, TRUE, expand_shortlink_cb, store);
     g_free(request);
 }
 
@@ -153,35 +260,16 @@ static void replace(PurpleAccount * account, PurpleConversation * conv, const gc
         return;
     }
     gtk_text_buffer_delete(text_buffer, &text_start, &text_end);
-	if (link) {
-		GtkTextMark *mark;
-		mark = gtk_text_buffer_create_mark( text_buffer, "new_url", &text_start, TRUE);
-		gtk_imhtml_insert_link(imhtml, mark, new, new);
-		gtk_text_buffer_delete_mark(text_buffer, mark);
-	} else {
-		gtk_text_buffer_insert(text_buffer, &text_start, new, -1);
-	}
-
-    return;
-}
-
-static void expand_cb(const gchar * original_url, const gchar * expanded_url, gpointer userdata)
-{
-    struct AccountConv *convmsg = userdata;
-
-    if (!expanded_url) {
-        purple_debug_error(PLUGIN_ID, "Couldn't expand %s\n", original_url);
-        return;
+    if (link) {
+        GtkTextMark    *mark;
+        mark = gtk_text_buffer_create_mark(text_buffer, "new_url", &text_start, TRUE);
+        gtk_imhtml_insert_link(imhtml, mark, new, new);
+        gtk_text_buffer_delete_mark(text_buffer, mark);
+    } else {
+        gtk_text_buffer_insert(text_buffer, &text_start, new, -1);
     }
 
-    /* Check for nesting */
-    displaying_msg(convmsg->account, expanded_url, convmsg->conv);
-
-    purple_debug_info(PLUGIN_ID, "Expanded |%s| into |%s|\n", original_url, expanded_url);
-
-    replace(convmsg->account, convmsg->conv, original_url, expanded_url, TRUE);
-
-    g_free(convmsg);
+    return;
 }
 
 static gboolean displaying_msg(PurpleAccount * account, const char *message, PurpleConversation * conv)
@@ -197,8 +285,10 @@ static gboolean displaying_msg(PurpleAccount * account, const char *message, Pur
     purple_debug_info(PLUGIN_ID, "Received message |%s|\n", message);
 
     cur = urls = get_links(message);
-    if (!urls)
+    if (!urls) {
+        purple_debug_misc(PLUGIN_ID, "No URLs found\n");
         return FALSE;
+    }
 
     do {
         char           *host;
@@ -208,24 +298,24 @@ static gboolean displaying_msg(PurpleAccount * account, const char *message, Pur
         char           *passwd;
 
         url = cur->data;
+        purple_debug_misc(PLUGIN_ID, "Analyzing %s\n", url);
 
         if (purple_url_parse(url, &host, &port, &path, &user, &passwd)) {
             int             i;
             int             found = 0;
             for (i = 0; i < sizeof (shorteners) / sizeof (shorteners[0]) && !found; i++) {
-                if (!strcmp(host, shorteners[i])) {
+                if (!strcmp(host, shorteners[i].name)) {
+                    struct AccountConv *convmsg;
+
+                    convmsg = g_new0(struct AccountConv, 1);
+                    convmsg->account = account;
+                    convmsg->conv = conv;
+
+                    purple_debug_misc(PLUGIN_ID, "Known significant type!\n");
+
+                    (*shorteners[i].cb) (url, convmsg);
                     found = 1;
                 }
-            }
-
-            if (found) {
-                struct AccountConv *convmsg;
-
-                convmsg = g_new0(struct AccountConv, 1);
-                convmsg->account = account;
-                convmsg->conv = conv;
-
-                expand(url, expand_cb, convmsg);
             }
 
             if (host)
@@ -320,7 +410,7 @@ static PurplePluginInfo info = {
     "Expand inline short URLs",                        /**< summary */
     "Expand inline short URLs",               /**< description */
     "Mike Miller <mikeage@gmail.com>",           /* author */
-    "https://code.google.com/p/expand/",            /* homepage */
+    "https://code.google.com/p/expand/",         /* homepage */
     plugin_load,                                    /**< load */
     plugin_unload,                                  /**< unload */
     plugin_destroy,                                 /**< destroy */
