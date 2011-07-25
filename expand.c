@@ -47,9 +47,13 @@ struct ExpandData {
     gpointer        userdata;
 };
 
+static void     expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new, gboolean link);
+static void     expand_twitpic(const char *url, gpointer userdata);
+static void     expand_lockerz(const char *url, gpointer userdata);
+static void     expand_yfrog(const char *url, gpointer userdata);
 static void     expand_twitlonger(const char *url, gpointer userdata);
 static void     expand_shortlink(const char *url, gpointer userdata);
 static GList   *get_links(const char *text);
@@ -72,6 +76,12 @@ struct Shortener shorteners[] = {
     {"goo.gl", expand_shortlink},
     {"ow.ly", expand_shortlink},
     {"tl.gd", expand_shortlink},
+	{"twitpic.com", expand_twitpic},
+	{"www.twitpic.com", expand_twitpic},
+	{"lockerz.com", expand_lockerz},
+	{"www.lockerz.com", expand_lockerz},
+	{"yfrog.com", expand_yfrog},
+	{"www.yfrog.com", expand_yfrog},
     {"twitlonger.com", expand_twitlonger},
     {"www.twitlonger.com", expand_twitlonger}
 };
@@ -83,6 +93,144 @@ static gchar   *xmlnode_get_child_data(const xmlnode * node, const char *name)
         return NULL;
     return xmlnode_get_data_unescaped(child);
 }
+#if 0
+static void area_prepared(GdkPixbufLoader *loader, gpointer userdata)
+{
+	struct ExpandData *store = userdata;
+	struct AccountConv *convmsg = NULL;
+	GdkPixbuf *pixbuf = NULL;
+
+	purple_debug_error(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+	purple_debug_error(PLUGIN_ID, "loader is 0x%X\n", (unsigned int) loader);
+	purple_debug_error(PLUGIN_ID, "userdata is 0x%X\n", (unsigned int) userdata);
+	if (store) {
+		convmsg = store->userdata;
+	}
+	purple_debug_error(PLUGIN_ID, "convmsg is 0x%X\n", (unsigned int) convmsg);
+	if (convmsg) {
+		pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+	}
+	purple_debug_error(PLUGIN_ID, "pixbuf is 0x%X\n", (unsigned int) pixbuf);
+
+	if (pixbuf) {
+		GtkIMHtml      *imhtml = NULL;
+		GtkTextBuffer  *text_buffer = NULL;
+
+		GtkTextIter     buf_end;
+		GtkTextIter     text_start;
+		GtkTextIter     text_end;
+
+		g_object_ref(G_OBJECT(pixbuf));
+
+		imhtml = GTK_IMHTML(PIDGIN_CONVERSATION(convmsg->conv)->imhtml);
+		text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(imhtml));
+
+		/* Work backwards to be faster on large buffers */
+		gtk_text_buffer_get_end_iter(text_buffer, &buf_end);
+
+		if (!gtk_text_iter_backward_search(&buf_end, store->original_url, 0, &text_start, &text_end, NULL)) {
+			purple_debug_warning(PLUGIN_ID, "Couldn't find the text (%s) in the buffer!\n", store->original_url);
+		} else {
+			//    gtk_text_buffer_delete(text_buffer, &text_start, &text_end);
+
+			gtk_text_buffer_insert_pixbuf(text_buffer, &text_end, pixbuf);
+		}
+	} else {
+		purple_debug_error(PLUGIN_ID, "Couldn't expand %s\n", store->original_url);
+	}
+
+	purple_debug_error(PLUGIN_ID, "Closing...\n");
+	status = gdk_pixbuf_loader_close(loader, &err);
+	purple_debug_error(PLUGIN_ID, "Status is %d, error was %s\n", status, err ? err->message : "non");
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_object_unref(G_OBJECT(loader));
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(convmsg);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(store->original_url);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(store);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+}
+#endif
+
+static void     expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message)
+{
+	GdkPixbufLoader *loader = NULL;
+	gboolean status = FALSE;
+	GError *err = NULL;
+	struct ExpandData *store = userdata;
+	struct AccountConv *convmsg = NULL;
+	GdkPixbuf *pixbuf = NULL;
+
+	purple_debug_error(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+	purple_debug_error(PLUGIN_ID, "loader is 0x%X\n", (unsigned int) loader);
+	purple_debug_error(PLUGIN_ID, "userdata is 0x%X\n", (unsigned int) userdata);
+	if (store) {
+		convmsg = store->userdata;
+	}
+	purple_debug_error(PLUGIN_ID, "convmsg is 0x%X\n", (unsigned int) convmsg);
+	if (convmsg) {
+	}
+
+
+	if (url_text && len) {
+		purple_debug_info(PLUGIN_ID, "Attempting to create pixbuf\n");
+
+		loader = gdk_pixbuf_loader_new();
+//		g_signal_connect (G_OBJECT(loader), "area_prepared", G_CALLBACK(area_prepared),userdata);
+		purple_debug_info(PLUGIN_ID, "Got %d bytes: |%s| |0x%02X 0x%02X 0x%02X 0x%02X ... 0x%02X 0x%02X|\n", len, url_text, (unsigned char) url_text[0],(unsigned char) url_text[1], (unsigned char) url_text[2], (unsigned char) url_text[3], (unsigned char) url_text[len-2], (unsigned char) url_text[len-1]);
+		status = gdk_pixbuf_loader_write(loader, (const guchar *) url_text, len,&err);
+	}
+	if (status) {
+		status = gdk_pixbuf_loader_close(loader, &err);
+	}
+
+	if (status) {
+		pixbuf = gdk_pixbuf_loader_get_pixbuf(loader);
+	}
+	purple_debug_error(PLUGIN_ID, "pixbuf is 0x%X\n", (unsigned int) pixbuf);
+
+	if (pixbuf) {
+		GtkIMHtml      *imhtml = NULL;
+		GtkTextBuffer  *text_buffer = NULL;
+
+		GtkTextIter     buf_end;
+		GtkTextIter     text_start;
+		GtkTextIter     text_end;
+
+		g_object_ref(G_OBJECT(pixbuf));
+
+		imhtml = GTK_IMHTML(PIDGIN_CONVERSATION(convmsg->conv)->imhtml);
+		text_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(imhtml));
+
+		/* Work backwards to be faster on large buffers */
+		gtk_text_buffer_get_end_iter(text_buffer, &buf_end);
+
+		if (!gtk_text_iter_backward_search(&buf_end, store->original_url, 0, &text_start, &text_end, NULL)) {
+			purple_debug_warning(PLUGIN_ID, "Couldn't find the text (%s) in the buffer!\n", store->original_url);
+		} else {
+			//    gtk_text_buffer_delete(text_buffer, &text_start, &text_end);
+
+			gtk_text_buffer_insert_pixbuf(text_buffer, &text_end, pixbuf);
+		}
+	} else {
+		purple_debug_error(PLUGIN_ID, "Couldn't expand %s\n", store->original_url);
+	}
+
+	purple_debug_error(PLUGIN_ID, "Closing...\n");
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_object_unref(G_OBJECT(loader));
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(convmsg);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(store->original_url);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+	g_free(store);
+	purple_debug_error(PLUGIN_ID, "%d\n", __LINE__);
+}
 
 static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message)
 {
@@ -91,6 +239,8 @@ static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer use
     xmlnode        *response_node = NULL;
     xmlnode        *post = NULL;
     gchar          *fulltext;
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
 
     if (store) {
         convmsg = store->userdata;
@@ -136,6 +286,8 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
     gchar          *new_location = NULL;
     struct AccountConv *convmsg = NULL;
 
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
     if (store) {
         convmsg = store->userdata;
     }
@@ -168,11 +320,98 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
     g_free(store->original_url);
     g_free(store);
 }
+static void expand_lockerz(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request;
+    gchar          *request_url;
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+    store = g_new0(struct ExpandData, 1);
+    request_url = g_strdup_printf("http://api.plixi.com/api/tpapi.svc/imagefromurl?url=%s&size=thumbnail", url);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    request = g_strdup_printf("GET %s HTTP/1.0\r\n" "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5)\r\n" "Content-Length: 0\r\n\r\n", request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL /* request */, FALSE, expand_pic_cb, store);
+	g_free(request);
+
+    g_free(request_url);
+}
+static void expand_twitpic(const char *url, gpointer userdata)
+{
+	struct ExpandData *store;
+	gchar          *request;
+	gchar          *request_url;
+	char           *host;
+	int             port;
+	char           *path;
+	char           *user;
+	char           *passwd;
+
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+	if (!purple_url_parse(url, &host, &port, &path, &user, &passwd)) {
+		purple_debug_error(PLUGIN_ID, "Can't parse URL %s!\n", url);
+	}
+
+	store = g_new0(struct ExpandData, 1);
+
+	request_url = g_strdup_printf("http://twitpic.com/show/thumb/%s", path);
+	store->original_url = g_strdup(url);
+	store->userdata = userdata;
+
+	if (host)
+		g_free(host);
+	if (path)
+		g_free(path);
+	if (user)
+		g_free(user);
+	if (passwd)
+		g_free(passwd);
+
+	purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+	request = g_strdup_printf("GET %s HTTP/1.0\r\n" "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5)\r\n" "Content-Length: 0\r\n\r\n", request_url);
+
+	purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL /* request */, FALSE, expand_pic_cb, store);
+	g_free(request);
+
+	g_free(request_url);
+}
+static void expand_yfrog(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request;
+    gchar          *request_url;
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+    store = g_new0(struct ExpandData, 1);
+    request_url = g_strdup_printf("%s:small", url);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    request = g_strdup_printf("GET %s HTTP/1.0\r\n" "User-Agent: Mozilla/4.0 (compatible; MSIE 5.5)\r\n" "Content-Length: 0\r\n\r\n", request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL /* request */, FALSE, expand_pic_cb, store);
+	g_free(request);
+
+    g_free(request_url);
+}
 
 static void expand_twitlonger(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
     gchar          *request_url;
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
 
     store = g_new0(struct ExpandData, 1);
     request_url = g_strdup_printf("%s/fulltext", url);
@@ -190,6 +429,8 @@ static void expand_shortlink(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
     gchar          *request;
+
+	purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
 
     store = g_new0(struct ExpandData, 1);
     store->original_url = g_strdup(url);
