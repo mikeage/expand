@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-07-03 10:13+0300\n"
+"POT-Creation-Date: 2011-07-26 06:23+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,14 +17,22 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: .././expand.c:286
-msgid "Enable Icons in Chat"
+#: .././expand.c:521
+msgid "Automatically expand shortened links"
 msgstr ""
 
-#: .././expand.c:289
-msgid "Icon Size"
+#: .././expand.c:524
+msgid "Automatically expand shortened texts (twitlonger)"
 msgstr ""
 
-#: .././expand.c:346 .././expand.c:347
+#: .././expand.c:527
+msgid "Automatically insert inline pictures (twitpic, etc)"
+msgstr ""
+
+#: .././expand.c:530
+msgid "Inline picture size"
+msgstr ""
+
+#: .././expand.c:587 .././expand.c:588
 msgid "Expand inline short URLs"
 msgstr ""
