@@ -108,6 +108,11 @@ static void expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, 
         convmsg = store->userdata;
     }
 
+	if (!(convmsg && convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+		len = 0;
+	}
+
     if (url_text && len) {
         loader = gdk_pixbuf_loader_new();
         status = gdk_pixbuf_loader_write(loader, (const guchar *) url_text, len, &err);
