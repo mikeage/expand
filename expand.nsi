@@ -84,6 +84,8 @@ Function GetPidginInstPath
 	IfFileExists "$0\pidgin.exe" cont
 	ReadRegStr $0 HKCU "Software\pidgin" ""
 	IfFileExists "$0\pidgin.exe" cont
+	StrCpy $0 "C:\PortableApps\PortableApps\PidginPortable\App\Pidgin"	
+	IfFileExists "$0\pidgin-portable.exe" cont
 	StrCpy $0 "C:\PortableApps\PidginPortable\App\Pidgin"	
 	IfFileExists "$0\pidgin-portable.exe" cont
 	StrCpy $0 "$PROGRAMFILES\PortableApps\PidginPortable\App\Pidgin"	
