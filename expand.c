@@ -51,6 +51,8 @@ static void     expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userda
 static void     expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, const gchar * url_text, gsize len, const gchar * error_message);
 static void     replace(PurpleAccount * account, PurpleConversation * conv, const gchar * original, const gchar * new, gboolean link);
+static void     expand_picplz(const char *url, gpointer userdata);
+static void     expand_lightbox(const char *url, gpointer userdata);
 static void     expand_twitpic(const char *url, gpointer userdata);
 static void     expand_lockerz(const char *url, gpointer userdata);
 static void     expand_yfrog(const char *url, gpointer userdata);
@@ -77,6 +79,10 @@ struct Shortener shorteners[] = {
     {"goo.gl", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
     {"ow.ly", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
     {"tl.gd", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
+	{"www.picplz.com", expand_picplz, EXPAND_PREF_EXPAND_PICS},
+    {"picplz.com", expand_picplz, EXPAND_PREF_EXPAND_PICS},
+    {"www.lightbox.com", expand_lightbox, EXPAND_PREF_EXPAND_PICS},
+    {"lightbox.com", expand_lightbox, EXPAND_PREF_EXPAND_PICS},
     {"twitpic.com", expand_twitpic, EXPAND_PREF_EXPAND_PICS},
     {"www.twitpic.com", expand_twitpic, EXPAND_PREF_EXPAND_PICS},
     {"lockerz.com", expand_lockerz, EXPAND_PREF_EXPAND_PICS},
@@ -269,6 +275,66 @@ static void expand_lockerz(const char *url, gpointer userdata)
     g_free(request_url);
 }
 
+static void expand_picplz(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request_url;
+    char           *host;
+    int             port;
+    char           *path;
+    char           *user;
+    char           *passwd;
+
+    purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+    store = g_new0(struct ExpandData, 1);
+
+    request_url = g_strdup_printf("%s/thumb/200", url);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL, FALSE, expand_pic_cb, store);
+
+    g_free(request_url);
+}
+static void expand_lightbox(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request_url;
+    char           *host;
+    int             port;
+    char           *path;
+    char           *user;
+    char           *passwd;
+
+    purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+    if (!purple_url_parse(url, &host, &port, &path, &user, &passwd)) {
+        purple_debug_error(PLUGIN_ID, "Can't parse URL %s!\n", url);
+    }
+
+    store = g_new0(struct ExpandData, 1);
+
+    request_url = g_strdup_printf("http://lightbox.com/show/thumb/%s", path);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    if (host)
+        g_free(host);
+    if (path)
+        g_free(path);
+    if (user)
+        g_free(user);
+    if (passwd)
+        g_free(passwd);
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL, FALSE, expand_pic_cb, store);
+
+    g_free(request_url);
+}
 static void expand_twitpic(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
