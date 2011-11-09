@@ -31,6 +31,7 @@
 struct AccountConv {
     PurpleAccount  *account;
     PurpleConversation *conv;
+	char *name;
 };
 
 typedef void    (*SHORTENER_CB) (const char *, gpointer);
@@ -117,7 +118,12 @@ static void expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, 
         convmsg = store->userdata;
     }
 
-	if (!(convmsg && convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+	if (!(convmsg && convmsg->name)) {
+		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+	}
+	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+
+	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
 		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
 		len = 0;
 	}
@@ -170,6 +176,7 @@ static void expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, 
     }
 
     g_object_unref(G_OBJECT(loader));
+    g_free(convmsg->name);
     g_free(convmsg);
     g_free(store->original_url);
     g_free(store);
@@ -186,6 +193,16 @@ static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer use
     if (store) {
         convmsg = store->userdata;
     }
+
+	if (!(convmsg && convmsg->name)) {
+		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+	}
+	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+
+	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+		len = 0;
+	}
 
     if (url_text && len) {
         response_node = xmlnode_from_str(url_text, strlen(url_text));
@@ -214,6 +231,7 @@ static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer use
         xmlnode_free(response_node);
     if (post)
         xmlnode_free(post);
+    g_free(convmsg->name);
     g_free(convmsg);
     g_free(fulltext);
     g_free(store->original_url);
@@ -230,6 +248,16 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
     if (store) {
         convmsg = store->userdata;
     }
+
+	if (!(convmsg && convmsg->name)) {
+		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+	}
+	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+
+	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+		len = 0;
+	}
 
     if (url_text && len) {
         location = g_strstr_len(url_text, len, "\nLocation: ");
@@ -254,6 +282,7 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
         return;
     }
 
+    g_free(convmsg->name);
     g_free(convmsg);
     g_free(new_location);
     g_free(store->original_url);
@@ -279,11 +308,6 @@ static void expand_picplz(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
     gchar          *request_url;
-    char           *host;
-    int             port;
-    char           *path;
-    char           *user;
-    char           *passwd;
 
     purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
 
@@ -547,7 +571,8 @@ static gboolean displaying_msg(PurpleAccount * account, const char *message, Pur
                     if (purple_prefs_get_bool(shorteners[i].pref)) {
                         convmsg = g_new0(struct AccountConv, 1);
                         convmsg->account = account;
-                        convmsg->conv = conv;
+                        convmsg->conv = NULL; /* TODO: remove this completely */
+						convmsg->name = g_strdup(purple_conversation_get_name(conv));
                         (*shorteners[i].cb) (url, convmsg);
                     }
                     found = 1;
