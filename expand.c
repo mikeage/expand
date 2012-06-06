@@ -58,6 +58,7 @@ static void     expand_twitpic(const char *url, gpointer userdata);
 static void     expand_lockerz(const char *url, gpointer userdata);
 static void     expand_yfrog(const char *url, gpointer userdata);
 static void     expand_twitgoo(const char *url, gpointer userdata);
+static void     expand_instagram(const char *url, gpointer userdata);
 static void     expand_twitlonger(const char *url, gpointer userdata);
 static void     expand_shortlink(const char *url, gpointer userdata);
 static GList   *get_links(const char *text);
@@ -92,6 +93,7 @@ struct Shortener shorteners[] = {
     {"www.twitgoo.com", expand_twitgoo, EXPAND_PREF_EXPAND_PICS},
     {"twitgoo.com", expand_twitgoo, EXPAND_PREF_EXPAND_PICS},
     {"www.yfrog.com", expand_yfrog, EXPAND_PREF_EXPAND_PICS},
+    {"instagr.am", expand_instagram, EXPAND_PREF_EXPAND_PICS},
     {"twitlonger.com", expand_twitlonger, EXPAND_PREF_EXPAND_TL},
     {"www.twitlonger.com", expand_twitlonger, EXPAND_PREF_EXPAND_TL}
 };
@@ -423,6 +425,24 @@ static void expand_twitgoo(const char *url, gpointer userdata)
 
     store = g_new0(struct ExpandData, 1);
     request_url = g_strdup_printf("%s/thumb", url);
+    store->original_url = g_strdup(url);
+    store->userdata = userdata;
+
+    purple_debug_misc(PLUGIN_ID, "Getting |%s| using |%s|...\n", url, request_url);
+
+    purple_util_fetch_url_request(request_url, TRUE, "Mozilla/4.0 (compatible; MSIE 5.5)", FALSE, NULL, FALSE, expand_pic_cb, store);
+
+    g_free(request_url);
+}
+static void expand_instagram(const char *url, gpointer userdata)
+{
+    struct ExpandData *store;
+    gchar          *request_url;
+
+    purple_debug_info(PLUGIN_ID, "%s()\n", G_STRFUNC);
+
+    store = g_new0(struct ExpandData, 1);
+    request_url = g_strdup_printf("%s/media/?size=t", url);
     store->original_url = g_strdup(url);
     store->userdata = userdata;
 
