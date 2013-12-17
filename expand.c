@@ -262,7 +262,9 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
 	}
 
     if (url_text && len) {
-        location = g_strstr_len(url_text, len, "\nLocation: ");
+        gchar *url_text_lower = g_ascii_strdown(url_text, -1);
+        location = g_strstr_len(url_text_lower, len, "\nlocation: ");
+		g_free(url_text_lower);
     } else {
         purple_debug_error(PLUGIN_ID, "Couldn't retreive! Error: %s\n", error_message);
     }
