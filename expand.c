@@ -31,7 +31,7 @@
 struct AccountConv {
     PurpleAccount  *account;
     PurpleConversation *conv;
-	char *name;
+    char           *name;
 };
 
 typedef void    (*SHORTENER_CB) (const char *, gpointer);
@@ -81,7 +81,7 @@ struct Shortener shorteners[] = {
     {"goo.gl", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
     {"ow.ly", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
     {"tl.gd", expand_shortlink, EXPAND_PREF_EXPAND_ALL_LINKS},
-	{"www.picplz.com", expand_picplz, EXPAND_PREF_EXPAND_PICS},
+    {"www.picplz.com", expand_picplz, EXPAND_PREF_EXPAND_PICS},
     {"picplz.com", expand_picplz, EXPAND_PREF_EXPAND_PICS},
     {"www.lightbox.com", expand_lightbox, EXPAND_PREF_EXPAND_PICS},
     {"lightbox.com", expand_lightbox, EXPAND_PREF_EXPAND_PICS},
@@ -120,15 +120,15 @@ static void expand_pic_cb(PurpleUtilFetchUrlData * url_data, gpointer userdata, 
         convmsg = store->userdata;
     }
 
-	if (!(convmsg && convmsg->name)) {
-		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
-	}
-	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+    if (!(convmsg && convmsg->name)) {
+        purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+    }
+    convmsg->conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
 
-	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
-		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
-		len = 0;
-	}
+    if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+        purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+        len = 0;
+    }
 
     if (url_text && len) {
         loader = gdk_pixbuf_loader_new();
@@ -196,15 +196,15 @@ static void expand_twitlonger_cb(PurpleUtilFetchUrlData * url_data, gpointer use
         convmsg = store->userdata;
     }
 
-	if (!(convmsg && convmsg->name)) {
-		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
-	}
-	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+    if (!(convmsg && convmsg->name)) {
+        purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+    }
+    convmsg->conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
 
-	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
-		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
-		len = 0;
-	}
+    if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+        purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+        len = 0;
+    }
 
     if (url_text && len) {
         response_node = xmlnode_from_str(url_text, strlen(url_text));
@@ -251,21 +251,23 @@ static void expand_shortlink_cb(PurpleUtilFetchUrlData * url_data, gpointer user
         convmsg = store->userdata;
     }
 
-	if (!(convmsg && convmsg->name)) {
-		purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
-	}
-	convmsg->conv=purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
+    if (!(convmsg && convmsg->name)) {
+        purple_debug_warning(PLUGIN_ID, "Invalid convmsg somehow\n");
+    }
+    convmsg->conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_ANY, convmsg->name, convmsg->account);
 
-	if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
-		purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
-		len = 0;
-	}
+    if (!(convmsg->conv && PIDGIN_CONVERSATION(convmsg->conv) && PIDGIN_CONVERSATION(convmsg->conv)->imhtml)) {
+        purple_debug_warning(PLUGIN_ID, "COnversation seems to have disappeared. Oh well.\n");
+        len = 0;
+    }
 
     if (url_text && len) {
-        gchar *url_text_lower = g_ascii_strdown(url_text, -1);
+        gchar          *url_text_lower = g_ascii_strdown(url_text, -1);
         location = g_strstr_len(url_text_lower, len, "\nlocation: ");
-        location = url_text + (location - url_text_lower);
-		g_free(url_text_lower);
+        if (location) {
+            location = url_text + (location - url_text_lower);
+        }
+        g_free(url_text_lower);
     } else {
         purple_debug_error(PLUGIN_ID, "Couldn't retreive! Error: %s\n", error_message);
     }
@@ -328,6 +330,7 @@ static void expand_picplz(const char *url, gpointer userdata)
 
     g_free(request_url);
 }
+
 static void expand_lightbox(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
@@ -364,6 +367,7 @@ static void expand_lightbox(const char *url, gpointer userdata)
 
     g_free(request_url);
 }
+
 static void expand_twitpic(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
@@ -419,6 +423,7 @@ static void expand_yfrog(const char *url, gpointer userdata)
 
     g_free(request_url);
 }
+
 static void expand_twitgoo(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
@@ -437,6 +442,7 @@ static void expand_twitgoo(const char *url, gpointer userdata)
 
     g_free(request_url);
 }
+
 static void expand_instagram(const char *url, gpointer userdata)
 {
     struct ExpandData *store;
@@ -594,8 +600,8 @@ static gboolean displaying_msg(PurpleAccount * account, const char *message, Pur
                     if (purple_prefs_get_bool(shorteners[i].pref)) {
                         convmsg = g_new0(struct AccountConv, 1);
                         convmsg->account = account;
-                        convmsg->conv = NULL; /* TODO: remove this completely */
-						convmsg->name = g_strdup(purple_conversation_get_name(conv));
+                        convmsg->conv = NULL;    /* TODO: remove this completely */
+                        convmsg->name = g_strdup(purple_conversation_get_name(conv));
                         (*shorteners[i].cb) (url, convmsg);
                     }
                     found = 1;
